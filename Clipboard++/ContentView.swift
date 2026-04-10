@@ -13,14 +13,13 @@ import SwiftUI
 /// - A live search bar that filters history by text content
 /// - A segmented tab picker to switch between all items and pinned items only
 /// - A scrollable, sectioned list of ``ClipboardItemRow`` entries
-/// - A footer showing the total item count and a "Clear All" button
+/// - A footer showing the total item count and action buttons (Settings, Clear All, Quit)
 ///
 /// The view reads `ClipboardManager` from the SwiftUI environment and derives
 /// `filtered`, `pinnedItems`, and `recentItems` as computed properties so the
 /// list stays in sync with any changes the manager publishes.
 struct ContentView: View {
     @Environment(ClipboardManager.self) private var manager
-    @Environment(\.openSettings) private var openSettings
 
     /// The current text entered in the search field.
     @State private var searchText = ""
@@ -157,14 +156,19 @@ struct ContentView: View {
         .padding(40)
     }
 
-    /// A toolbar at the bottom of the panel showing the item count and a "Clear All" button.
+    /// A toolbar at the bottom of the panel showing the item count and action buttons.
+    ///
+    /// Settings opens via the AppDelegate (not `@Environment(\.openSettings)`, which
+    /// requires a SwiftUI scene context that is unavailable in a plain NSHostingView).
     private var footer: some View {
         HStack {
             Text("\(manager.items.count) item\(manager.items.count == 1 ? "" : "s")")
                 .font(.caption)
                 .foregroundStyle(.tertiary)
             Spacer()
-            Button { openSettings() } label: {
+            Button {
+                AppDelegate.shared?.openSettings()
+            } label: {
                 Image(systemName: "gearshape")
             }
             .font(.caption)
@@ -175,6 +179,10 @@ struct ContentView: View {
                 .buttonStyle(.plain)
                 .foregroundStyle(.secondary)
                 .disabled(manager.items.isEmpty)
+            Button("Quit") { NSApp.terminate(nil) }
+                .font(.caption)
+                .buttonStyle(.plain)
+                .foregroundStyle(.secondary)
         }
         .padding(.horizontal, 12)
         .padding(.vertical, 8)

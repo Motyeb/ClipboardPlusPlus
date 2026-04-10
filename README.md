@@ -34,13 +34,21 @@ Build and run with **Cmd+R**. The app will appear as a clipboard icon in your me
 | Action | How |
 |--------|-----|
 | Open panel | Click the clipboard icon in the menu bar |
+| Close panel | Click the icon again, or click anywhere outside the panel |
 | Copy an item | Click any row — content is copied and the panel closes |
 | Pin an item | Hover over a row and click the pin icon |
 | Delete an item | Hover over a row and click the trash icon |
 | Search | Type in the search bar at the top of the panel |
 | Filter pinned | Select the **Pinned** tab |
 | Clear all history | Click **Clear All** in the footer |
-| Open settings | Click the gear icon in the footer, or press **Cmd+,** |
+| Open settings | Click the gear icon in the footer, or right-click the menu bar icon |
+| Quit | Click **Quit** in the footer, or right-click the menu bar icon → Quit |
+
+### Right-click menu
+
+Right-clicking the menu bar icon shows a context menu with:
+- **Settings...** — opens the settings window
+- **Quit Clipboard++** — exits the app
 
 ## Settings
 
@@ -55,7 +63,8 @@ Build and run with **Cmd+R**. The app will appear as a clipboard icon in your me
 
 ```
 Clipboard++/
-├── Clipboard__App.swift      — App entry point, MenuBarExtra + Settings scenes, SwiftData setup
+├── Clipboard__App.swift      — App entry point, @NSApplicationDelegateAdaptor wiring
+├── AppDelegate.swift         — NSStatusItem, NSPanel, right-click context menu, window management
 ├── AppSettings.swift         — User settings, persisted to UserDefaults
 ├── ClipboardItem.swift       — SwiftData model (text + image items, pin state, timestamps)
 ├── ClipboardManager.swift    — NSPasteboard polling, history management, persistence
@@ -68,6 +77,7 @@ Clipboard++/
 
 - **SwiftUI + SwiftData** — declarative UI and persistence, no third-party dependencies
 - **`@Observable`** — fine-grained reactivity; only views that read `items` re-render on change
+- **NSStatusItem + NSPanel** — custom AppKit status item gives full control over left-click (toggle panel) and right-click (context menu); borderless `.nonactivatingPanel` hosts the SwiftUI content view without stealing focus from other apps
 - **NSPasteboard polling** — checks `changeCount` every 0.5 s on the `.common` RunLoop mode so the timer keeps firing while the panel is open
 - **`SMAppService`** — modern launch-at-login API (macOS 13+), no helper bundle required
 - **App Sandbox enabled** — `NSPasteboard.general` access requires no special entitlements

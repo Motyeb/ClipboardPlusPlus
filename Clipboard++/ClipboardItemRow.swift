@@ -33,6 +33,9 @@ struct ClipboardItemRow: View {
     var body: some View {
         ZStack(alignment: .topTrailing) {
             itemContent
+                // Reserve space for action buttons on text rows so text never overlaps them.
+                // Image rows are exempt — buttons overlay the image, not caption text.
+                .padding(.trailing, isHovered && !item.isImage ? 68 : 0)
             if isHovered {
                 actionButtons
                     .padding(.top, 6)
@@ -51,9 +54,9 @@ struct ClipboardItemRow: View {
         .onHover { isHovered = $0 }
         .onTapGesture {
             manager.copyItem(item)
-            // Close the MenuBarExtra panel. The panel is the key window while open,
-            // so closing it dismisses the floating window without hiding the status icon.
-            NSApp.keyWindow?.close()
+            // The panel is a non-activating NSPanel (not necessarily the key window),
+            // so close it via the AppDelegate rather than NSApp.keyWindow?.close().
+            AppDelegate.shared?.closePanel()
         }
         .animation(.easeInOut(duration: 0.15), value: isHovered)
     }
