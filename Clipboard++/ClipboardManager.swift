@@ -17,10 +17,12 @@ import Observation
 ///
 /// The in-memory `items` array is always kept sorted with pinned entries first,
 /// then unpinned entries in reverse-chronological order. The unpinned history is
-/// capped at 50 entries; older items are automatically deleted.
+/// capped at the value configured in `AppSettings.historyLimit`; older items are
+/// automatically deleted.
 @Observable
 final class ClipboardManager {
     private var modelContext: ModelContext
+    private let settings: AppSettings
     private var timer: Timer?
 
     /// The last observed `NSPasteboard.changeCount`. Used to detect new clipboard content
@@ -34,10 +36,15 @@ final class ClipboardManager {
     var items: [ClipboardItem] = []
 
     /// Creates a manager and begins monitoring the clipboard.
-    /// - Parameter modelContext: The SwiftData context used for persistence.
-    ///   Pass `ModelContainer.mainContext` from the app entry point.
-    init(modelContext: ModelContext) {
+    /// - Parameters:
+    ///   - modelContext: The SwiftData context used for persistence.
+    ///     Pass `ModelContainer.mainContext` from the app entry point.
+    ///   - settings: The shared app settings. The manager reads `pauseMonitoring`,
+    ///     `historyLimit`, and `soundOnCopy` at call time rather than subscribing to
+    ///     changes, so no extra wiring is needed.
+    init(modelContext: ModelContext, settings: AppSettings) {
         self.modelContext = modelContext
+        self.settings = settings
         loadItems()
         startPolling()
     }
@@ -63,7 +70,12 @@ final class ClipboardManager {
     /// Image content is checked before text because most screenshot operations write
     /// both an image and an associated filename string to the pasteboard — prioritising
     /// the image type gives a more accurate capture.
+    ///
+    /// Monitoring can be paused via `AppSettings.pauseMonitoring`; the timer keeps
+    /// running so that capturing resumes immediately when the toggle is turned off.
     private func checkPasteboard() {
+        guard !settings.pauseMonitoring else { return }
+
         let current = NSPasteboard.general.changeCount
         guard current != lastChangeCount else { return }
         lastChangeCount = current
@@ -104,11 +116,12 @@ final class ClipboardManager {
     /// unpinned items appear immediately after all pinned items.
     private var pinnedCount: Int { items.filter(\.isPinned).count }
 
-    /// Removes the oldest unpinned items if the history exceeds 50 entries.
+    /// Removes the oldest unpinned items if the history exceeds the configured limit.
     private func pruneHistory() {
+        let limit = settings.historyLimit
         let unpinned = items.filter { !$0.isPinned }
-        guard unpinned.count > 50 else { return }
-        let toRemove = Array(unpinned.suffix(unpinned.count - 50))
+        guard unpinned.count > limit else { return }
+        let toRemove = Array(unpinned.suffix(unpinned.count - limit))
         let ids = Set(toRemove.map(\.persistentModelID))
         toRemove.forEach { modelContext.delete($0) }
         items.removeAll { ids.contains($0.persistentModelID) }
@@ -119,6 +132,8 @@ final class ClipboardManager {
     /// Fetches all items from SwiftData and re-sorts them into `items`.
     ///
     /// Called on startup and after any operation that changes sort order (e.g. pin/unpin).
+    /// Also enforces the current history limit so that reducing the limit in settings
+    /// takes effect on the next app launch without requiring a clipboard event.
     func loadItems() {
         let descriptor = FetchDescriptor<ClipboardItem>()
         let fetched = (try? modelContext.fetch(descriptor)) ?? []
@@ -126,6 +141,7 @@ final class ClipboardManager {
             if $0.isPinned != $1.isPinned { return $0.isPinned }
             return $0.timestamp > $1.timestamp
         }
+        pruneHistory()
     }
 
     /// Writes the item's content back to the system clipboard.
@@ -141,6 +157,7 @@ final class ClipboardManager {
             NSPasteboard.general.setString(item.content, forType: .string)
         }
         lastChangeCount = NSPasteboard.general.changeCount
+        if settings.soundOnCopy { NSSound.beep() }
     }
 
     /// Toggles the pinned state of an item and reloads the sorted list.

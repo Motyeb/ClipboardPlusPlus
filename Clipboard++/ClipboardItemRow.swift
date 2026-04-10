@@ -10,10 +10,12 @@ import AppKit
 
 /// A single row in the clipboard history list.
 ///
-/// The row displays either an image thumbnail (for image items) or a two-line text
-/// preview (for text items), along with a relative timestamp.
+/// For image items the row shows a full-width card preview (up to 180 pt tall) with
+/// a small caption bar below it. For text items the row shows a two-line text preview
+/// with a timestamp.
 ///
-/// On hover, two action buttons animate in from the trailing edge:
+/// On hover, two action buttons animate in as an overlay anchored to the top-trailing
+/// corner of the row:
 /// - **Pin / Unpin** — moves the item to or from the Pinned section.
 /// - **Delete** — removes the item from history immediately.
 ///
@@ -29,9 +31,14 @@ struct ClipboardItemRow: View {
     @State private var isHovered = false
 
     var body: some View {
-        HStack(alignment: .top, spacing: 10) {
+        ZStack(alignment: .topTrailing) {
             itemContent
-            if isHovered { actionButtons }
+            if isHovered {
+                actionButtons
+                    .padding(.top, 6)
+                    .padding(.trailing, 6)
+                    .transition(.opacity.combined(with: .scale(scale: 0.85)))
+            }
         }
         .padding(.horizontal, 12)
         .padding(.vertical, 8)
@@ -53,22 +60,28 @@ struct ClipboardItemRow: View {
 
     // MARK: - Subviews
 
-    /// Renders a thumbnail + label for images, or a text preview for text items.
+    /// Renders a full-width card preview for images, or a text preview for text items.
     @ViewBuilder
     private var itemContent: some View {
         if item.isImage, let data = item.imageData, let nsImage = NSImage(data: data) {
-            Image(nsImage: nsImage)
-                .resizable()
-                .aspectRatio(contentMode: .fill)
-                .frame(width: 48, height: 36)
-                .clipShape(RoundedRectangle(cornerRadius: 4))
-            VStack(alignment: .leading, spacing: 3) {
-                Text("Image")
-                    .font(.system(size: 13))
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                Text(item.relativeTimestamp)
-                    .font(.caption)
-                    .foregroundStyle(.tertiary)
+            // Image card — fills the available row width with a capped height
+            VStack(alignment: .leading, spacing: 6) {
+                Image(nsImage: nsImage)
+                    .resizable()
+                    .aspectRatio(contentMode: .fit)
+                    .frame(maxWidth: .infinity)
+                    .frame(maxHeight: 180)
+                    .clipShape(RoundedRectangle(cornerRadius: 8))
+
+                HStack {
+                    Text("Image")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                    Spacer()
+                    Text(item.relativeTimestamp)
+                        .font(.caption)
+                        .foregroundStyle(.tertiary)
+                }
             }
         } else {
             VStack(alignment: .leading, spacing: 3) {
@@ -83,7 +96,7 @@ struct ClipboardItemRow: View {
         }
     }
 
-    /// The pin and delete buttons that appear on hover, with a fade+scale transition.
+    /// The pin and delete buttons that appear on hover, overlaid in the top-trailing corner.
     private var actionButtons: some View {
         HStack(spacing: 6) {
             actionButton(
@@ -96,7 +109,6 @@ struct ClipboardItemRow: View {
                 manager.deleteItem(item)
             }
         }
-        .transition(.opacity.combined(with: .scale(scale: 0.85)))
     }
 
     /// A small icon button used for the pin and delete actions.

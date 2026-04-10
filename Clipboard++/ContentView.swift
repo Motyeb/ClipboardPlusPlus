@@ -20,6 +20,7 @@ import SwiftUI
 /// list stays in sync with any changes the manager publishes.
 struct ContentView: View {
     @Environment(ClipboardManager.self) private var manager
+    @Environment(\.openSettings) private var openSettings
 
     /// The current text entered in the search field.
     @State private var searchText = ""
@@ -163,6 +164,12 @@ struct ContentView: View {
                 .font(.caption)
                 .foregroundStyle(.tertiary)
             Spacer()
+            Button { openSettings() } label: {
+                Image(systemName: "gearshape")
+            }
+            .font(.caption)
+            .buttonStyle(.plain)
+            .foregroundStyle(.secondary)
             Button("Clear All") { manager.deleteAll() }
                 .font(.caption)
                 .buttonStyle(.plain)
