@@ -19,6 +19,16 @@ import SwiftData
 /// `AppSettings` is initialised as a stored property so it exists before
 /// `applicationDidFinishLaunching` runs, allowing the SwiftUI `Settings` scene in
 /// `Clipboard__App` to access `appDelegate.settings` at body-computation time.
+/// A borderless panel subclass that can become the key window.
+///
+/// `NSPanel` with `.borderless` returns `false` for `canBecomeKey` by default,
+/// which prevents `TextField` and other controls from receiving keyboard events.
+/// Overriding this property allows the panel to accept keyboard focus while
+/// retaining `.nonactivatingPanel` behaviour (other apps are not deactivated).
+private final class KeyablePanel: NSPanel {
+    override var canBecomeKey: Bool { true }
+}
+
 final class AppDelegate: NSObject, NSApplicationDelegate {
 
     // MARK: - Shared State
@@ -75,7 +85,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         )
         hostingView.frame = NSRect(x: 0, y: 0, width: 340, height: 480)
 
-        panel = NSPanel(
+        panel = KeyablePanel(
             contentRect: NSRect(x: 0, y: 0, width: 340, height: 480),
             styleMask: [.borderless, .nonactivatingPanel],
             backing: .buffered,
@@ -108,7 +118,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             panel.setFrameOrigin(NSPoint(x: x, y: y))
         }
 
-        panel.orderFront(nil)
+        panel.makeKeyAndOrderFront(nil)
         installClickOutsideMonitor()
     }
 
